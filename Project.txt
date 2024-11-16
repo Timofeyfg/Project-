@@ -1,0 +1,250 @@
+import sqlite3
+import time
+
+from pyfirmata import Arduino, util
+import flet as ft
+
+
+def main(page: ft.Page):
+    def register(e):
+        db = sqlite3.connect('User.db')
+        cur = db.cursor()
+
+        cur.execute("""CREATE TABLE IF NOT EXISTS Users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, 
+        user_name TEXT NOT NULL, 
+        password TEXT UNIQUE NOT NULL
+        )""")
+        cur.execute(f"INSERT INTO Users VALUES(NULL, '{user_name.value}', '{user_password.value}')")
+        db.commit()
+        db.close()
+        user_name.value = ''
+        user_password.value = ''
+        btn_reg.text = 'Добавлено'
+        page.update()
+
+
+
+    def auth_user(e):
+        db = sqlite3.connect('User.db')
+        cur = db.cursor()
+        cur.execute(f"SELECT * FROM Users WHERE user_name  = '{user_name_auth.value}' AND password = '{user_password_auth.value}'")
+        if cur.fetchone() is not None:
+            btn_auth.text = 'Авторизовано'
+
+            if len(page.navigation_bar.destinations) == 2:
+                page.navigation_bar.destinations.append(ft.NavigationDestination(
+                    icon=ft.icons.ADB_SHARP,
+                    label='Сбор данных'))
+                page.navigation_bar.destinations.append(ft.NavigationDestination(
+                    icon=ft.icons.BOOK,
+                    label='Личный кабинет',
+                    selected_icon=ft.icons.BOOKMARK))
+                page.update()
+
+        else:
+            page.snack_bar= ft.SnackBar(ft.Text('Неверно введённые данные!'))
+            page.snack_bar.open= True
+            page.update()
+        db.commit()
+        db.close()
+    def validate(e):
+        if all([user_name_auth.value, user_password_auth.value]):
+            btn_auth.disabled = False
+        else:
+            btn_auth.disabled = True
+        page.update()
+        if all([user_name.value, user_password.value]):
+            btn_reg.disabled = False
+        else:
+            btn_reg.disabled = True
+    def pole(e):
+
+        page.clean()
+        board = Arduino('COM4')
+        it = util.Iterator(board)
+        it.start()
+        board.analog[0].enable_reporting()
+        pin = board.get_pin('a:3:o')
+        board.analog[2].enable_reporting()
+        board.analog[1].enable_reporting()
+        sda = board.get_pin('a:4:i')
+        scl = board.get_pin('a:5:i')
+
+        sda.enable_reporting()
+        scl.enable_reporting()
+        while True:
+            sda_value = sda.read()
+            scl_value = scl.read()
+            if scl_value is not None and sda_value is not None:
+                page.add(ft.Column([
+                ft.Row([ft.Text(f'Углекислого газа: {board.analog[0].read()}')]),
+                ft.Row([ft.Text(f'Уровень воды в баке: {pin.read()}')]),
+                ft.Row([ft.Text(f'Количество света: {board.analog[2].read()}')]),
+                ft.Row([ft.Text(f'Влажность почвы: {board.analog[1].read()}')]),
+                ft.Row([ft.Text(f'Влажность воздуха: {scl_value}\nТемпература воздуха: {sda_value}')])]))
+                time.sleep(1)
+
+
+            page.clean()
+
+
+            page.update()
+
+    def pole3(e):
+        page.clean()
+        page.update()
+        board = Arduino('COM4')
+        it = util.Iterator(board)
+        it.start()
+        board.analog[0].enable_reporting()
+        pin = board.get_pin('a:3:o')
+        board.analog[2].enable_reporting()
+        board.analog[1].enable_reporting()
+        sda = board.get_pin('a:4:i')
+        scl = board.get_pin('a:5:i')
+        sda.enable_reporting()
+        scl.enable_reporting()
+        while True:
+            sda_value = sda.read()
+            scl_value = scl.read()
+
+            try:
+                import os
+                os.remove('names.csv')
+                import csv
+
+                data = [
+                    ['Углекислый газ', board.analog[0].read()],
+                    ['Уровень воды в баке', pin.read()],
+                    ['Количество света', board.analog[2].read()],
+                    ['Влажность почвы', board.analog[1].read()],
+                    ['Влажность воздуха ', scl_value],
+                    ['Температура', sda_value]
+                ]
+                with open('file.csv', 'w') as csvfile:
+                    csvwriter = csv.writer(csvfile)
+                    for row in data:
+                        csvwriter.writerow(row)
+
+            except:
+                import csv
+                data = [
+                    ['Углекислый газ', f'{board.analog[0].read()}'],
+                    ['Уровень воды в баке', f'{pin.read()}'],
+                    ['Количество света', f'{board.analog[2].read()}'],
+                    ['Влажность почвы', f'{board.analog[1].read()}'],
+                    ['Влажность воздуха', f'{scl_value}'],
+                    ['Температура', f'{sda_value}']
+                ]
+                with open('file.csv', 'w') as csvfile:
+                    csvwriter = csv.writer(csvfile)
+                    for row in data:
+                        csvwriter.writerow(row)
+
+            page.update()
+
+    def pole2(e):
+        page.clean()
+        page.add(ft.Row([
+            ft.OutlinedButton(text='Получать отчет по участку', width=400, on_click=pole3)
+        ], alignment=ft.MainAxisAlignment.CENTER))
+
+
+        page.update()
+
+    page.title= 'Регистрация'
+    page.vertical_alignment='dark'
+    user_name = ft.TextField(label='Введите никнейм', width=400, on_change=validate)
+    user_password = ft.TextField(label='Введите пароль',width=400,password=True, on_change=validate)
+    user_name_auth = ft.TextField(label='Логин', width=400, on_change=validate, )
+    user_password_auth = ft.TextField(label='Пароль',width=400,password=True, on_change=validate)
+
+
+    page.window_width = 550
+    page.window_height =620
+    page.window_resizable = False
+    btn_reg = ft.OutlinedButton(text='Добавить', width=400, on_click=register, disabled=True)
+    btn_auth = ft.OutlinedButton(text='Авторизовать', width=400, disabled=True, on_click=auth_user)
+
+
+
+
+
+
+
+    # Кабинет пользователя начало
+
+    users_list = ft.ListView(spacing=10, padding=20)
+    # Кабинет пользователя конец
+    panel = ft.Row([
+            ft.Column([
+                ft.Text('Регистрация'),
+                user_name,
+                user_password,
+                btn_reg
+
+            ])
+        ])
+    panel_kabinet =ft.Row([
+            ft.Column([
+                ft.Text('Личный Кабинет'),
+                users_list,
+
+            ])
+        ])
+    panel_auth = ft.Row([
+        ft.Column([
+            ft.Text('Авторизация'),
+            user_name_auth,
+            user_password_auth,
+            btn_auth
+
+        ])
+    ])
+    panel_document = ft.Column([ft.Row([
+
+            ft.Text('Выберите')], alignment=ft.MainAxisAlignment.CENTER), ft.Row([
+
+    ft.OutlinedButton(text='Мониторинг полей', width=250, on_click=pole), ft.OutlinedButton(text='Мониторинг участка', width=250, on_click=pole2)], alignment=ft.MainAxisAlignment.CENTER)])
+
+
+
+    def navigate(e):
+        index = page.navigation_bar.selected_index
+        page.clean()
+        if index == 0:
+            page.add(panel)
+        elif index == 1:
+            page.add(panel_auth)
+        elif index == 2:
+            page.add(panel_document)
+        elif index == 3:
+
+            users_list.controls.clear()
+            db = sqlite3.connect('User.db')
+            cur = db.cursor()
+            cur.execute(
+                f"SELECT * FROM Users WHERE user_name = '{user_name_auth.value}' AND password = '{user_password_auth.value}'")
+            res = cur.fetchall()
+            if res != None:
+                for user in res:
+                    users_list.controls.append(ft.Column([ft.Text(f'Имя пользователя: {user[1]}\n'
+                                                               f'Пароль: {user[2]}'),
+                                ]))
+
+            db.commit()
+            db.close()
+            page.add(panel_kabinet)
+    page.navigation_bar = ft.NavigationBar(
+        destinations=[
+            ft.NavigationDestination(icon=ft.icons.VERIFIED_USER, label='Регистрация'),
+            ft.NavigationDestination(icon=ft.icons.VERIFIED_USER_OUTLINED, label='Авторизация')
+
+        ], on_change=navigate
+    )
+    page.add(
+        panel
+    )
+
+ft.app(target=main)
