@@ -1,0 +1,72 @@
+import asyncio
+from aiogram import Bot, Dispatcher, F, types
+import os
+from aiogram.filters import CommandStart
+from aiogram.types import Message, InputFile
+
+bot = Bot(token='7118391258:AAGjJ75etXMTV9IGYPQJPzx-fLAkYsXEI4A')
+dp = Dispatcher()
+
+@dp.message(CommandStart())
+async def com(message: Message):
+    file = os.listdir('E:/')
+    f = open(f'E:/{file[1]}', 'r')
+    f2 = f.readline()
+    f.close()
+
+    await message.reply(f'Бинарный код: {f2}')
+
+async def main():
+    await dp.start_polling(bot)
+
+
+if __name__=='__main__':
+    asyncio.run(main())
+
+
+
+
+// подключение библиотек SPI и SD:
+#include <SPI.h>
+#include <SD.h>
+
+const uint8_t PIN_CS = 10;                         // указываем номер вывода arduino подключенного к выводу CS адаптера
+File myFile;
+String        REAL_TIME;  
+ 
+// создаём переменную myFile класса File, которая будет служить "указателем" на открытый файл
+void setup(){
+  REAL_TIME = "11111111111111111111111111111111001111111111001111111111000111110011111000111111000001111000011110000011100000001110000111000000011000000000000000000000000100000000000000000000000000000000000000000000000000001000000000000000000000000110000110001000010001100001110011111111001111111100111110011111110011111110011111111111111111111111111111";  
+  Serial.begin(9600);                              // открываем последовательный порт на скорости 9600 бод
+  while(!Serial){;}                                // ожидаем соединение последовательного порта
+//используем ответ инициализации, для определения работоспособности карты и адаптера
+  if(!SD.begin(PIN_CS)){                           // инициализация SD карты с указанием номера вывода CS
+    Serial.println("SD-card not found"); return;   // ошибка инициализации. карта не обнаружена или не подключён (неправильно подключён) адаптер карт MicroSD
+  }
+//проверяем наличие файла "iarduino.txt" на SD-карте
+  if(SD.exists("iarduino.txt")){                   // если файл с именем "iarduino.txt" существует, то ...
+    Serial.println("file exists");
+  }else{                                           // иначе ...
+    Serial.println("file doesn't exist");
+  }
+//открываем файл "iarduino.txt" для чтения и записи, начиная с конца файла, и записываем в него строку
+  myFile = SD.open("iarduino.txt", FILE_WRITE);    // если файла с именем "iarduino.txt" - нет, то он будет создан.
+  if(myFile){                                      // если файл доступен (открыт для записи), то ...
+    Serial.println("file is opened");
+    myFile.println(REAL_TIME);     // записываем первую часть строки в файл
+     // записываем вторую часть строки в файл
+    Serial.println("batma");
+    myFile.close();                                // закрываем файл
+    Serial.println("file is closed");
+  }else{                                           // иначе ...
+    Serial.println("file is not opened");
+  }
+//проверяем наличие файла "iarduino.txt" на SD-карте
+  if(SD.exists("iarduino.txt")){                   // если файл с именем "iarduino.txt" существует, то ...
+    Serial.println("file exists");
+  }else{                                           // иначе ...
+    Serial.println("file doesn't exist");
+  }
+}
+void loop(){
+}
